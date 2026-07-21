@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Streaming Analytics Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0b0b14; --panel:#14142099; --panel2:#1a1a2a; --border:#ffffff14;
+    --fg:#f1f1f5; --muted:#9a9ab0; --primary:#a78bfa;
+    --c1:#a78bfa; --c2:#60a5fa; --c3:#34d399; --c4:#fbbf24; --c5:#f472b6;
+    --gradient-hero:linear-gradient(135deg,#a78bfa,#60a5fa);
+    --gradient-card:linear-gradient(135deg,#1a1a2acc,#12121ecc);
+    --shadow-card:0 10px 30px -12px #0009;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(ellipse at top,#1a1030 0%,#0b0b14 60%);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;min-height:100vh}
+  .wrap{max-width:1280px;margin:0 auto;padding:40px 24px}
+  header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:40px}
+  .kicker{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--primary);margin:0}
+  h1{font-size:44px;margin:12px 0 8px;font-weight:700}
+  h1 span{background:var(--gradient-hero);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:var(--muted);max-width:560px;margin:0}
+  .pill{border:1px solid var(--border);background:var(--gradient-card);border-radius:16px;padding:12px 20px;font-size:14px;color:var(--muted)}
+  .pill b{color:var(--fg);font-weight:500}
+  .grid{display:grid;gap:20px}
+  .stats{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-bottom:32px}
+  .row{grid-template-columns:2fr 1fr;margin-bottom:24px}
+  .row2{grid-template-columns:1fr 1fr;margin-bottom:24px}
+  .row3{grid-template-columns:repeat(3,1fr);margin-bottom:24px}
+  @media(max-width:900px){.row,.row2,.row3{grid-template-columns:1fr}}
+  .card{border:1px solid var(--border);background:var(--gradient-card);border-radius:16px;padding:24px;box-shadow:var(--shadow-card)}
+  .stat .label{font-size:11px;text-transform:uppercase;letter-spacing:.2em;color:var(--muted);margin:0}
+  .stat .val{font-size:36px;font-weight:700;margin:12px 0 4px}
+  .stat .sub{font-size:13px;color:var(--muted);margin:0}
+  .card h3{margin:0 0 4px;font-size:17px}
+  .card .csub{margin:0 0 16px;font-size:13px;color:var(--muted)}
+  .chart-box{position:relative;height:280px}
+  .chart-box.tall{height:300px}
+  .bar-row{margin-bottom:12px}
+  .bar-row .top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;gap:8px}
+  .bar-row .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bar-row .rank{color:var(--muted);margin-right:8px}
+  .bar-row .val{color:var(--muted);flex-shrink:0}
+  .track{height:8px;background:#ffffff10;border-radius:8px;overflow:hidden}
+  .fill{height:100%;background:var(--gradient-hero);border-radius:8px}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:40px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <p class="kicker">Streaming Insights</p>
+      <h1>Viewing Behavior <span>Dashboard</span></h1>
+      <p class="sub">Aggregated watch activity across platforms, content categories and days — based on 10,000 play events.</p>
+    </div>
+    <div class="pill">Period: <b>Nov 2020 – Jan 2021</b></div>
+  </header>
+
+  <section class="grid stats" id="stats"></section>
+
+  <section class="grid row">
+    <div class="card"><h3>Daily Watch Time</h3><p class="csub">Total hours per day</p><div class="chart-box tall"><canvas id="daily"></canvas></div></div>
+    <div class="card"><h3>Platform Mix</h3><p class="csub">Share of watch time</p><div class="chart-box tall"><canvas id="platform"></canvas></div></div>
+  </section>
+
+  <section class="grid row2">
+    <div class="card"><h3>Content Type</h3><p class="csub">Hours watched by play event</p><div class="chart-box"><canvas id="event"></canvas></div></div>
+    <div class="card"><h3>Day of Week</h3><p class="csub">Watch hours by weekday</p><div class="chart-box"><canvas id="dow"></canvas></div></div>
+  </section>
+
+  <section class="grid row3">
+    <div class="card"><h3>Weekend vs Weekday</h3><p class="csub">Total watch hours</p><div class="chart-box"><canvas id="cls"></canvas></div></div>
+    <div class="card"><h3>Session Length Buckets</h3><p class="csub">Number of plays</p><div class="chart-box"><canvas id="bucket"></canvas></div></div>
+    <div class="card"><h3>Monthly Volume</h3><p class="csub">Watch hours by month</p><div class="chart-box"><canvas id="month"></canvas></div></div>
+  </section>
+
+  <section class="grid row2">
+    <div class="card"><h3>Top 15 Titles</h3><p class="csub">Ranked by watch hours</p><div id="topVideos"></div></div>
+    <div class="card"><h3>Top 10 Viewers</h3><p class="csub">Most active customers</p><div id="topCustomers"></div></div>
+  </section>
+
+  <footer id="foot"></footer>
+</div>
+
+<script>
+const data = {"totals": {"seconds": 18896280, "customers": 242, "views": 10000}, "byPlatform": [{"name": "Leanback", "seconds": 13065180, "views": 6586}, {"name": "iOS", "seconds": 252660, "views": 306}, {"name": "Web", "seconds": 4353660, "views": 1990}, {"name": "Android", "seconds": 1224780, "views": 1118}], "byEvent": [{"name": "LiveTV", "seconds": 14912100, "views": 7327}, {"name": "Other", "seconds": 1956660, "views": 1324}, {"name": "Catch Up", "seconds": 1975260, "views": 1317}, {"name": "Downloads", "seconds": 52260, "views": 32}], "byDay": [{"name": "Sunday", "seconds": 2989080, "views": 1560}, {"name": "Monday", "seconds": 2105940, "views": 1113}, {"name": "Tuesday", "seconds": 2834040, "views": 1433}, {"name": "Wednesday", "seconds": 2783640, "views": 1539}, {"name": "Thursday", "seconds": 2913540, "views": 1636}, {"name": "Friday", "seconds": 2449500, "views": 1300}, {"name": "Saturday", "seconds": 2820540, "views": 1419}], "byMonth": [{"name": "November", "seconds": 1943940, "views": 1263}, {"name": "December", "seconds": 15921420, "views": 8173}, {"name": "January", "seconds": 1030920, "views": 564}], "byClassification": [{"name": "Weekend", "seconds": 5809620, "views": 2979}, {"name": "Weekday", "seconds": 13086660, "views": 7021}], "byBucket": [{"name": "Low", "seconds": 1857240, "views": 5367}, {"name": "Med", "seconds": 6801360, "views": 3429}, {"name": "High", "seconds": 10237680, "views": 1204}], "topVideos": [{"title": "Unknown", "seconds": 5874120, "views": 2669}, {"title": "The South African Morning", "seconds": 389040, "views": 94}, {"title": "Masterchef Australia", "seconds": 300360, "views": 142}, {"title": "PL Build Up", "seconds": 233160, "views": 44}, {"title": "MTV Music 24", "seconds": 191880, "views": 54}, {"title": "Int CRI 20/21: RSA v SRI 1st Test D2", "seconds": 162600, "views": 34}, {"title": "Today", "seconds": 148080, "views": 35}, {"title": "Int CRI 20/21: RSA v SRI 1st Test D1", "seconds": 136920, "views": 34}, {"title": "South Africa Tonight", "seconds": 106620, "views": 90}, {"title": "Suidooster", "seconds": 101160, "views": 84}, {"title": "All Angles", "seconds": 96120, "views": 22}, {"title": "Gomora", "seconds": 91200, "views": 81}, {"title": "7de Laan", "seconds": 88200, "views": 82}, {"title": "Int CRI 20/21: RSA v SRI 1st Test D3", "seconds": 86580, "views": 26}, {"title": "MasterChef Australia", "seconds": 83340, "views": 31}], "daily": [{"date": "2020-11-01", "seconds": 6120, "views": 14}, {"date": "2020-11-02", "seconds": 30420, "views": 20}, {"date": "2020-11-03", "seconds": 6420, "views": 19}, {"date": "2020-11-04", "seconds": 8460, "views": 22}, {"date": "2020-11-05", "seconds": 12480, "views": 16}, {"date": "2020-11-06", "seconds": 17040, "views": 20}, {"date": "2020-11-07", "seconds": 9120, "views": 26}, {"date": "2020-11-08", "seconds": 8280, "views": 19}, {"date": "2020-11-09", "seconds": 7020, "views": 13}, {"date": "2020-11-10", "seconds": 3900, "views": 7}, {"date": "2020-11-11", "seconds": 26460, "views": 14}, {"date": "2020-11-12", "seconds": 28320, "views": 26}, {"date": "2020-11-13", "seconds": 44340, "views": 30}, {"date": "2020-11-14", "seconds": 81840, "views": 68}, {"date": "2020-11-15", "seconds": 68880, "views": 63}, {"date": "2020-11-16", "seconds": 74820, "views": 46}, {"date": "2020-11-17", "seconds": 110160, "views": 44}, {"date": "2020-11-18", "seconds": 79380, "views": 61}, {"date": "2020-11-19", "seconds": 118320, "views": 65}, {"date": "2020-11-20", "seconds": 27720, "views": 22}, {"date": "2020-11-21", "seconds": 26340, "views": 34}, {"date": "2020-11-22", "seconds": 30420, "views": 51}, {"date": "2020-11-23", "seconds": 131640, "views": 55}, {"date": "2020-11-24", "seconds": 175020, "views": 64}, {"date": "2020-11-25", "seconds": 115500, "views": 70}, {"date": "2020-11-26", "seconds": 139140, "views": 72}, {"date": "2020-11-27", "seconds": 114300, "views": 58}, {"date": "2020-11-28", "seconds": 98520, "views": 74}, {"date": "2020-11-29", "seconds": 153120, "views": 105}, {"date": "2020-11-30", "seconds": 190440, "views": 65}, {"date": "2020-12-02", "seconds": 9660, "views": 4}, {"date": "2020-12-03", "seconds": 60780, "views": 75}, {"date": "2020-12-04", "seconds": 32400, "views": 57}, {"date": "2020-12-05", "seconds": 195600, "views": 115}, {"date": "2020-12-06", "seconds": 56340, "views": 86}, {"date": "2020-12-07", "seconds": 60900, "views": 58}, {"date": "2020-12-08", "seconds": 66480, "views": 75}, {"date": "2020-12-09", "seconds": 75120, "views": 61}, {"date": "2020-12-10", "seconds": 168840, "views": 103}, {"date": "2020-12-11", "seconds": 312060, "views": 146}, {"date": "2020-12-12", "seconds": 308100, "views": 174}, {"date": "2020-12-13", "seconds": 408660, "views": 220}, {"date": "2020-12-14", "seconds": 310740, "views": 183}, {"date": "2020-12-15", "seconds": 400740, "views": 220}, {"date": "2020-12-16", "seconds": 523740, "views": 302}, {"date": "2020-12-17", "seconds": 706980, "views": 352}, {"date": "2020-12-18", "seconds": 266760, "views": 117}, {"date": "2020-12-19", "seconds": 783720, "views": 419}, {"date": "2020-12-20", "seconds": 895800, "views": 464}, {"date": "2020-12-21", "seconds": 754920, "views": 387}, {"date": "2020-12-22", "seconds": 596160, "views": 356}, {"date": "2020-12-23", "seconds": 738360, "views": 369}, {"date": "2020-12-24", "seconds": 713280, "views": 402}, {"date": "2020-12-25", "seconds": 603960, "views": 286}, {"date": "2020-12-26", "seconds": 1317300, "views": 509}, {"date": "2020-12-27", "seconds": 1361460, "views": 538}, {"date": "2020-12-28", "seconds": 545040, "views": 286}, {"date": "2020-12-29", "seconds": 1475160, "views": 648}, {"date": "2020-12-30", "seconds": 1206960, "views": 636}, {"date": "2020-12-31", "seconds": 965400, "views": 525}, {"date": "2021-01-01", "seconds": 1030920, "views": 564}], "topCustomers": [{"id": "JYOGA9HQ4XY696D39OMU9LAG000H", "seconds": 929280}, {"id": "68WQ5Y219XYF0ZPF1JOV7VRL000G", "seconds": 728160}, {"id": "EPBF04WULJ4Z3T1GEO1UIT7E006H", "seconds": 513540}, {"id": "KEFL2WL371PM3R0QBTN6I5UF000E", "seconds": 511740}, {"id": "EJDJ2Y551IK5C3NRIFV98V5D0023", "seconds": 436140}, {"id": "HGKBH7DQDW9BJ0F0G4A4BI7B002V", "seconds": 394440}, {"id": "99XY8K7T71P3KIC125HPLFM1004C", "seconds": 389280}, {"id": "2RYTE1R6JC9CGE410JYAM4FY004E", "seconds": 367020}, {"id": "ADFQJ9FVBIWSIYQ8G7PR21HX0042", "seconds": 348720}, {"id": "CKZZ1KBUKHAZ6K851Y205XSW004E", "seconds": 347220}]};
+const COLORS = ['#a78bfa','#60a5fa','#34d399','#fbbf24','#f472b6'];
+const fmt = n => new Intl.NumberFormat('en-US').format(n);
+const hrs = s => (s/3600).toFixed(1);
+const DAY = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const BUCK = ['Low','Med','High'];
+
+Chart.defaults.color = '#9a9ab0';
+Chart.defaults.borderColor = '#ffffff10';
+Chart.defaults.font.family = '-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif';
+
+const t = data.totals;
+const stats = [
+  ['Total Watch Hours', fmt(Math.round(t.seconds/3600)), fmt(t.seconds)+' seconds'],
+  ['Unique Viewers', fmt(t.customers), 'distinct customers'],
+  ['Play Events', fmt(t.views), 'sessions logged'],
+  ['Avg / Session', Math.round(t.seconds/t.views/60)+' min', 'across all plays'],
+];
+document.getElementById('stats').innerHTML = stats.map(([l,v,s])=>
+  `<div class="card stat"><p class="label">${l}</p><p class="val">${v}</p><p class="sub">${s}</p></div>`).join('');
+
+// Daily area
+const dailyLabels = data.daily.map(d=>d.date.slice(5));
+const dailyVals = data.daily.map(d=>+(d.seconds/3600).toFixed(1));
+new Chart(document.getElementById('daily'),{
+  type:'line',
+  data:{labels:dailyLabels,datasets:[{label:'Hours',data:dailyVals,borderColor:COLORS[0],backgroundColor:'rgba(167,139,250,0.2)',fill:true,tension:0.35,pointRadius:0,borderWidth:2}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{maxTicksLimit:12}},y:{beginAtZero:true}}}
+});
+
+// Platform pie
+new Chart(document.getElementById('platform'),{
+  type:'doughnut',
+  data:{labels:data.byPlatform.map(p=>p.name),datasets:[{data:data.byPlatform.map(p=>p.seconds),backgroundColor:COLORS,borderColor:'#0b0b14',borderWidth:2}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:c=>c.label+': '+hrs(c.raw)+' h'}}},cutout:'60%'}
+});
+
+// Event bar
+new Chart(document.getElementById('event'),{
+  type:'bar',
+  data:{labels:data.byEvent.map(e=>e.name),datasets:[{label:'Hours',data:data.byEvent.map(e=>+(e.seconds/3600).toFixed(1)),backgroundColor:COLORS[1],borderRadius:8}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+});
+
+// Day of week
+const byDay = [...data.byDay].sort((a,b)=>DAY.indexOf(a.name)-DAY.indexOf(b.name));
+new Chart(document.getElementById('dow'),{
+  type:'bar',
+  data:{labels:byDay.map(d=>d.name.slice(0,3)),datasets:[{label:'Hours',data:byDay.map(d=>+(d.seconds/3600).toFixed(1)),backgroundColor:COLORS[2],borderRadius:8}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+});
+
+// Weekend vs weekday
+new Chart(document.getElementById('cls'),{
+  type:'pie',
+  data:{labels:data.byClassification.map(c=>c.name),datasets:[{data:data.byClassification.map(c=>c.seconds),backgroundColor:[COLORS[1],COLORS[2]],borderColor:'#0b0b14',borderWidth:2}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:c=>c.label+': '+hrs(c.raw)+' h'}}}}
+});
+
+// Buckets
+const byB = [...data.byBucket].sort((a,b)=>BUCK.indexOf(a.name)-BUCK.indexOf(b.name));
+new Chart(document.getElementById('bucket'),{
+  type:'bar',
+  data:{labels:byB.map(b=>b.name),datasets:[{label:'Plays',data:byB.map(b=>b.views),backgroundColor:COLORS[3],borderRadius:8}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+});
+
+// Monthly
+new Chart(document.getElementById('month'),{
+  type:'bar',
+  data:{labels:data.byMonth.map(m=>m.name.slice(0,3)),datasets:[{label:'Hours',data:data.byMonth.map(m=>+(m.seconds/3600).toFixed(1)),backgroundColor:COLORS[4],borderRadius:8}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+});
+
+// Top videos
+const maxV = data.topVideos[0].seconds;
+document.getElementById('topVideos').innerHTML = data.topVideos.map((v,i)=>{
+  const p = (v.seconds/maxV)*100;
+  return `<div class="bar-row"><div class="top"><span class="name"><span class="rank">${String(i+1).padStart(2,'0')}</span>${v.title}</span><span class="val">${hrs(v.seconds)} h</span></div><div class="track"><div class="fill" style="width:${p}%"></div></div></div>`;
+}).join('');
+
+const maxC = data.topCustomers[0].seconds;
+document.getElementById('topCustomers').innerHTML = data.topCustomers.map((c,i)=>{
+  const p = (c.seconds/maxC)*100;
+  return `<div class="bar-row"><div class="top"><span class="name mono"><span class="rank">#${i+1}</span>${c.id.slice(0,16)}…</span><span class="val">${hrs(c.seconds)} h</span></div><div class="track"><div class="fill" style="width:${p}%"></div></div></div>`;
+}).join('');
+
+document.getElementById('foot').textContent = `Built from ${fmt(t.views)} viewing events · ${fmt(t.customers)} unique viewers`;
+</script>
+</body>
+</html>
